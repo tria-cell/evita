@@ -1,1 +1,1 @@
-export const EVITA_IMAGE = '/evita.png';
+export const EVITA_IMAGE = `${import.meta.env.BASE_URL}evita.png`;
