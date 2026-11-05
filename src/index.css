@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  
+  h1, h2, h3, .font-fun {
+    font-family: 'Fredoka', cursive, sans-serif;
+  }
+}
+
+@keyframes float-heart {
+  0% { transform: translateY(0px) scale(0.9); opacity: 0; }
+  20% { opacity: 0.8; }
+  80% { opacity: 0.8; }
+  100% { transform: translateY(-70px) scale(1.15); opacity: 0; }
+}
+
+.animate-float-heart {
+  animation: float-heart 2.5s ease-in-out infinite;
+}
+
+@keyframes pop {
+  from { transform: scale(0.65); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes zoomPhoto {
+  from { transform: scale(1); }
+  to { transform: scale(1.22); }
+}
+

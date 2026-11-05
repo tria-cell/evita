@@ -1,0 +1,6 @@
+{
+  "name": "Evita Rides - Pink CB Adventure",
+  "description": "Game petualangan naik motor CB Pink bersama Evita! Hindari kendaraan, kumpulkan cinta, dan capai garis finish 1 kilo!",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

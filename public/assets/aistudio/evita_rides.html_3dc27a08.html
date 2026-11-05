@@ -1,0 +1,743 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evita Rides 💗</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ min-height:100vh;
+ font-family:"Trebuchet MS",Arial,sans-serif;
+ text-align:center;
+ color:#bd3479;
+ background:linear-gradient(140deg,#ffd9eb,#fff4fa,#ffb5d8);
+ overflow-x:hidden;
+}
+header{padding:10px 5px 4px}
+h1{font-size:clamp(24px,6vw,34px);margin:3px}
+.sub{font-weight:bold;font-size:14px}
+.panel{width:min(95vw,430px);margin:8px auto}
+.stats{display:flex;gap:8px;justify-content:center}
+.stat{
+ flex:1;background:#fff;border:2px solid #ffacd1;
+ border-radius:14px;padding:8px;font-weight:bold;
+}
+.gamebox{
+ width:min(95vw,430px);margin:8px auto;
+ border:5px solid #ff72b8;border-radius:20px;
+ overflow:hidden;background:#444;
+ box-shadow:0 6px 18px #d77da8;
+}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+.controls{display:flex;justify-content:center;gap:22px;margin:9px}
+button{
+ border:3px solid white;border-radius:25px;
+ background:#ff69b4;color:white;
+ padding:12px 21px;font-size:17px;
+ font-weight:bold;box-shadow:0 4px 9px #d77da8;
+ cursor:pointer;touch-action:none;
+}
+button:active{transform:scale(.94)}
+#restart{display:none}
+#music{font-size:13px;padding:8px 14px;background:#d94c94}
+.note{font-size:12px;line-height:1.5;padding:4px}
+.overlay{
+ position:fixed;inset:0;z-index:10;
+ display:none;align-items:center;justify-content:center;
+ padding:18px;background:rgba(255,178,215,.94);
+}
+.overlay.show{display:flex}
+.dialog{
+ width:min(92vw,390px);padding:22px 17px;
+ background:#fff5fa;border:4px solid #ff75b6;
+ border-radius:25px;box-shadow:0 8px 30px #d77da8;
+ animation:pop .5s ease;
+}
+.dialog h2{font-size:27px;margin:5px}
+.dialog p{font-size:16px;line-height:1.5}
+@keyframes pop{
+ from{transform:scale(.65);opacity:0}
+ to{transform:scale(1);opacity:1}
+}
+#finishOverlay{
+ padding:0;background:#ffb5d8;
+ flex-direction:column;overflow:hidden;
+}
+.finishPhoto{
+ position:absolute;inset:0;width:100%;height:100%;
+ object-fit:cover;
+ animation:zoomPhoto 8s ease-in-out forwards;
+}
+@keyframes zoomPhoto{
+ from{transform:scale(1)}
+ to{transform:scale(1.22)}
+}
+.finishShade{
+ position:absolute;inset:0;
+ background:linear-gradient(0deg,rgba(115,20,69,.75),transparent 80%);
+}
+.finishWords{
+ position:relative;z-index:2;margin-top:auto;
+ width:100%;padding:25px 15px 35px;color:white;
+ text-shadow:0 2px 8px #8d245a;
+}
+.finishWords h2{font-size:clamp(32px,9vw,48px);margin:5px}
+.finishWords p{font-size:18px;font-weight:bold}
+.finishWords button{background:#ff4f9e}
+@media(min-width:700px){
+ body{padding-bottom:10px}
+}
+</style>
+</head>
+<body>
+
+<header>
+ <h1>🎀 EVITA RIDES 🎀</h1>
+ <div class="sub">PINK CB ADVENTURE 🏍️💗</div>
+</header>
+
+<div class="stats panel">
+ <div class="stat">⭐ Skor: <span id="score">0</span></div>
+ <div class="stat">🏁 Jarak: <span id="distance">0</span>%</div>
+</div>
+
+<div class="gamebox">
+ <canvas id="game" width="400" height="600"></canvas>
+</div>
+
+<div class="controls">
+ <button id="left">⬅️ KIRI</button>
+ <button id="right">KANAN ➡️</button>
+</div>
+
+<button id="start">💗 MULAI PETUALANGAN 💗</button>
+<button id="restart">🔄 COBA LAGI</button>
+<br>
+<button id="music">🎵 Musik: MATI</button>
+
+<div class="note">
+ Hindari semua kendaraan dan capai garis FINISH! 🏁<br>
+ Tekan tombol kiri/kanan atau gunakan tombol panah keyboard.
+</div>
+
+<!-- Layar tabrakan -->
+<div class="overlay" id="crashOverlay">
+ <div class="dialog">
+  <div style="font-size:48px">🥺💗</div>
+  <h2>YAHH, NABRAK 1 kilo!</h2>
+  <p id="crashMessage">
+   Semangat, Cintaa! Jangan menyerah yaa.
+   CB Pink-nya masih menunggu! 🎀
+  </p>
+  <button id="tryAgain">💗 COBA LAGI</button>
+ </div>
+</div>
+
+<!-- Layar finish -->
+<div class="overlay" id="finishOverlay">
+ <img class="finishPhoto" src="evita.png" alt="Foto Evita"
+      onerror="this.style.display='none'">
+ <div class="finishShade"></div>
+ <div class="finishWords">
+  <div style="font-size:38px">🏆🎀💗</div>
+  <h2>Yee iso, EVITA!</h2>
+  <p>
+   Selamat, Cintaaa 1 kilo untukmu!<br>
+   Akhirnya sampai FINISH!<br>
+   CB Pink selalu di hati! 🏍️💕
+  </p>
+  <button id="finishAgain">MAIN LAGI 💗</button>
+ </div>
+</div>
+
+<script>
+"use strict";
+
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+const scoreEl=document.getElementById("score");
+const distanceEl=document.getElementById("distance");
+
+const startBtn=document.getElementById("start");
+const restartBtn=document.getElementById("restart");
+const crashOverlay=document.getElementById("crashOverlay");
+const finishOverlay=document.getElementById("finishOverlay");
+
+let playing=false;
+let score=0;
+let progress=0;
+let playerX=200;
+let roadOffset=0;
+let frame=0;
+let obstacles=[];
+let animationId=null;
+
+let left=false;
+let right=false;
+
+const playerY=510;
+const lanes=[100,200,300];
+
+// Foto pengendara
+const face=new Image();
+let hasFace=false;
+
+face.onload=()=>{
+ hasFace=true;
+ drawIdle();
+};
+face.src="evita.png";
+
+// ---------------- MUSIK ORISINAL ----------------
+
+let audio=null;
+let musicOn=false;
+let musicTimer=null;
+let noteIndex=0;
+
+const melody=[
+ 523.25,659.25,783.99,659.25,
+ 587.33,698.46,880,698.46,
+ 523.25,659.25,783.99,1046.5,
+ 880,783.99,659.25,587.33
+];
+
+function playNote(){
+ if(!musicOn)return;
+
+ if(!audio){
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC)return;
+  audio=new AC();
+ }
+
+ if(audio.state==="suspended")audio.resume();
+
+ const osc=audio.createOscillator();
+ const gain=audio.createGain();
+
+ osc.type="sine";
+ osc.frequency.value=melody[noteIndex%melody.length];
+
+ gain.gain.setValueAtTime(.0001,audio.currentTime);
+ gain.gain.exponentialRampToValueAtTime(.07,audio.currentTime+.04);
+ gain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.25);
+
+ osc.connect(gain);
+ gain.connect(audio.destination);
+
+ osc.start();
+ osc.stop(audio.currentTime+.27);
+
+ noteIndex++;
+}
+
+function setMusic(value){
+ musicOn=value;
+ document.getElementById("music").textContent=
+  musicOn?"🎵 Musik: NYALA":"🎵 Musik: MATI";
+
+ if(musicTimer){
+  clearInterval(musicTimer);
+  musicTimer=null;
+ }
+
+ if(musicOn){
+  playNote();
+  musicTimer=setInterval(playNote,280);
+ }
+}
+
+document.getElementById("music").onclick=()=>{
+ setMusic(!musicOn);
+};
+
+// ---------------- GAMBAR JALAN ----------------
+
+function roundedRect(x,y,w,h,r,color){
+ ctx.fillStyle=color;
+ ctx.beginPath();
+ ctx.roundRect(x,y,w,h,r);
+ ctx.fill();
+}
+
+function drawRoad(){
+ ctx.fillStyle="#a8d98c";
+ ctx.fillRect(0,0,400,600);
+
+ // Bunga pinggir jalan
+ for(let i=0;i<9;i++){
+  const y=(i*85+roadOffset*1.5)%680-30;
+
+  for(const x of [18,382]){
+   ctx.fillStyle="#ff7ab9";
+   ctx.beginPath();
+   ctx.arc(x,y,6,0,Math.PI*2);
+   ctx.fill();
+
+   ctx.fillStyle="#ffe57a";
+   ctx.beginPath();
+   ctx.arc(x,y,2.5,0,Math.PI*2);
+   ctx.fill();
+  }
+ }
+
+ // Aspal
+ ctx.fillStyle="#494949";
+ ctx.fillRect(45,0,310,600);
+
+ ctx.fillStyle="#fff";
+ ctx.fillRect(45,0,5,600);
+ ctx.fillRect(350,0,5,600);
+
+ // Garis jalan
+ ctx.strokeStyle="#fff";
+ ctx.lineWidth=5;
+ ctx.setLineDash([35,30]);
+ ctx.lineDashOffset=-roadOffset;
+
+ ctx.beginPath();
+ ctx.moveTo(150,0);
+ ctx.lineTo(150,600);
+ ctx.moveTo(250,0);
+ ctx.lineTo(250,600);
+ ctx.stroke();
+
+ ctx.setLineDash([]);
+
+ roadOffset=(roadOffset+5)%65;
+}
+
+// ---------------- MOTOR CB PINK ----------------
+
+function drawWheel(x,y){
+ ctx.fillStyle="#171717";
+ ctx.beginPath();
+ ctx.arc(x,y,14,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.strokeStyle="#d9d9d9";
+ ctx.lineWidth=3;
+ ctx.beginPath();
+ ctx.arc(x,y,9,0,Math.PI*2);
+ ctx.stroke();
+
+ ctx.strokeStyle="#ddd";
+ ctx.lineWidth=1;
+
+ for(let i=0;i<8;i++){
+  const a=i*Math.PI/4;
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(x+9*Math.cos(a),y+9*Math.sin(a));
+  ctx.stroke();
+ }
+}
+
+function drawBike(x,y){
+ // Bayangan
+ ctx.fillStyle="#222";
+ ctx.beginPath();
+ ctx.ellipse(x,y+8,40,12,0,0,Math.PI*2);
+ ctx.fill();
+
+ // Roda
+ drawWheel(x,y-43);
+ drawWheel(x,y+30);
+
+ // Rangka
+ ctx.strokeStyle="#cfcfcf";
+ ctx.lineWidth=5;
+ ctx.beginPath();
+ ctx.moveTo(x-8,y-35);
+ ctx.lineTo(x+12,y+22);
+ ctx.lineTo(x-13,y+22);
+ ctx.lineTo(x-8,y-35);
+ ctx.stroke();
+
+ // Mesin
+ roundedRect(x-15,y-8,30,29,5,"#888");
+ roundedRect(x-11,y-4,22,20,4,"#555");
+
+ // Tangki
+ ctx.fillStyle="#f42c91";
+ ctx.beginPath();
+ ctx.ellipse(x,y-29,27,18,0,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.strokeStyle="#ffd9eb";
+ ctx.lineWidth=3;
+ ctx.beginPath();
+ ctx.ellipse(x,y-29,21,12,0,0,Math.PI*2);
+ ctx.stroke();
+
+ // Jok
+ roundedRect(x-20,y-57,40,12,6,"#292929");
+
+ // Spakbor
+ ctx.strokeStyle="#ff9ac8";
+ ctx.lineWidth=5;
+ ctx.beginPath();
+ ctx.arc(x,y-43,18,Math.PI,Math.PI*2);
+ ctx.stroke();
+
+ // Lampu depan
+ ctx.fillStyle="#fff2a6";
+ ctx.beginPath();
+ ctx.arc(x,y-64,10,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.strokeStyle="#ddd";
+ ctx.lineWidth=3;
+ ctx.stroke();
+
+ // Setang
+ ctx.strokeStyle="#ccc";
+ ctx.lineWidth=5;
+ ctx.lineCap="round";
+ ctx.beginPath();
+ ctx.moveTo(x-27,y-69);
+ ctx.lineTo(x-18,y-76);
+ ctx.lineTo(x+18,y-76);
+ ctx.lineTo(x+27,y-69);
+ ctx.stroke();
+
+ // Spion
+ ctx.strokeStyle="#ddd";
+ ctx.lineWidth=3;
+ ctx.beginPath();
+ ctx.moveTo(x-19,y-76);
+ ctx.lineTo(x-27,y-91);
+ ctx.moveTo(x+19,y-76);
+ ctx.lineTo(x+27,y-91);
+ ctx.stroke();
+
+ ctx.fillStyle="#ddd";
+ ctx.beginPath();
+ ctx.ellipse(x-28,y-94,7,5,0,0,Math.PI*2);
+ ctx.ellipse(x+28,y-94,7,5,0,0,Math.PI*2);
+ ctx.fill();
+
+ // Wajah Evita
+ ctx.save();
+ ctx.beginPath();
+ ctx.arc(x,y-119,24,0,Math.PI*2);
+ ctx.clip();
+
+ if(hasFace){
+  ctx.drawImage(face,x-24,y-143,48,48);
+ }else{
+  ctx.fillStyle="#ffddc9";
+  ctx.fillRect(x-24,y-143,48,48);
+  ctx.fillStyle="#bd3479";
+  ctx.font="bold 11px Arial";
+  ctx.textAlign="center";
+  ctx.fillText("EVITA",x,y-115);
+ }
+ ctx.restore();
+
+ // Helm pink
+ ctx.fillStyle="#ff75b5";
+ ctx.beginPath();
+ ctx.arc(x,y-119,26,Math.PI,Math.PI*2);
+ ctx.fill();
+
+ // Pita
+ ctx.fillStyle="#ffc3df";
+ ctx.beginPath();
+ ctx.arc(x+21,y-145,7,0,Math.PI*2);
+ ctx.arc(x+32,y-145,7,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.fillStyle="#fff";
+ ctx.font="bold 11px Arial";
+ ctx.textAlign="center";
+ ctx.fillText("CB PINK",x,y+51);
+ ctx.textAlign="left";
+}
+
+// ---------------- RINTANGAN ----------------
+
+function spawnObstacle(){
+ const lane=lanes[Math.floor(Math.random()*lanes.length)];
+
+ obstacles.push({
+  x:lane,
+  y:-65,
+  type:Math.random()<.6?"car":"bike",
+  width:Math.random()<.6?52:34,
+  height:Math.random()<.6?76:66
+ });
+}
+
+function drawObstacle(o){
+ if(o.type==="car"){
+  roundedRect(o.x-24,o.y-38,48,76,9,"#39a7e8");
+  roundedRect(o.x-17,o.y-28,34,20,5,"#c9f1ff");
+
+  ctx.fillStyle="#222";
+  ctx.fillRect(o.x-28,o.y-26,6,16);
+  ctx.fillRect(o.x+22,o.y-26,6,16);
+  ctx.fillRect(o.x-28,o.y+15,6,16);
+  ctx.fillRect(o.x+22,o.y+15,6,16);
+
+  ctx.fillStyle="#fff2a5";
+  ctx.fillRect(o.x-16,o.y+29,9,5);
+  ctx.fillRect(o.x+7,o.y+29,9,5);
+ }else{
+  ctx.fillStyle="#171717";
+  ctx.beginPath();
+  ctx.arc(o.x,o.y-18,9,0,Math.PI*2);
+  ctx.arc(o.x,o.y+19,9,0,Math.PI*2);
+  ctx.fill();
+
+  roundedRect(o.x-13,o.y-18,26,35,7,"#ffbf43");
+
+  ctx.fillStyle="#fff";
+  ctx.beginPath();
+  ctx.arc(o.x,o.y-25,5,0,Math.PI*2);
+  ctx.fill();
+ }
+}
+
+// Hitbox berbentuk persegi panjang.
+// Sedikit bersinggungan pun dianggap tabrakan.
+function checkCollision(o){
+ const player={
+  left:playerX-23,
+  right:playerX+23,
+  top:playerY-63,
+  bottom:playerY+35
+ };
+
+ const obstacle={
+  left:o.x-o.width/2,
+  right:o.x+o.width/2,
+  top:o.y-o.height/2,
+  bottom:o.y+o.height/2
+ };
+
+ return (
+  player.left < obstacle.right &&
+  player.right > obstacle.left &&
+  player.top < obstacle.bottom &&
+  player.bottom > obstacle.top
+ );
+}
+
+// ---------------- PESAN DAN STATUS ----------------
+
+function updateStats(){
+ scoreEl.textContent=score;
+ distanceEl.textContent=progress;
+}
+
+function showCrash(){
+ playing=false;
+ left=false;
+ right=false;
+
+ if(animationId!==null){
+  cancelAnimationFrame(animationId);
+  animationId=null;
+ }
+
+ if(musicOn)playNote();
+
+ const messages=[
+  "Semangat, Cintaa! Jangan menyerah yaa. 💗",
+  "Aduh, CB Pink-nya kena sedikit. Ayo coba lagi! 🎀",
+  "Tidak apa-apa, sayang! Kamu pasti bisa sampai finish! 🌷",
+  "Hehehe, hampir berhasil! Semangat terus, Evita! 💕"
+ ];
+
+ document.getElementById("crashMessage").textContent=
+  messages[Math.floor(Math.random()*messages.length)];
+
+ crashOverlay.classList.add("show");
+}
+
+function showFinish(){
+ playing=false;
+ left=false;
+ right=false;
+
+ if(animationId!==null){
+  cancelAnimationFrame(animationId);
+  animationId=null;
+ }
+
+ if(musicOn)playNote();
+
+ finishOverlay.classList.add("show");
+}
+
+function closeOverlays(){
+ crashOverlay.classList.remove("show");
+ finishOverlay.classList.remove("show");
+}
+
+// ---------------- GAME LOOP ----------------
+
+function loop(){
+ if(!playing)return;
+
+ drawRoad();
+
+ if(left)playerX-=5;
+ if(right)playerX+=5;
+
+ playerX=Math.max(85,Math.min(315,playerX));
+
+ frame++;
+
+ if(frame%62===0)spawnObstacle();
+
+ for(const o of obstacles){
+  o.y+=5;
+  drawObstacle(o);
+
+  if(checkCollision(o)){
+   showCrash();
+   return;
+  }
+ }
+
+ obstacles=obstacles.filter(o=>o.y<680);
+
+ drawBike(playerX,playerY);
+
+ score++;
+ progress=Math.min(100,Math.floor(score/15));
+
+ updateStats();
+
+ if(progress>=100){
+  showFinish();
+  return;
+ }
+
+ animationId=requestAnimationFrame(loop);
+}
+
+// ---------------- MULAI DAN ULANG ----------------
+
+function drawIdle(){
+ drawRoad();
+ drawBike(200,playerY);
+
+ ctx.fillStyle="rgba(255,190,220,.96)";
+ ctx.fillRect(28,205,344,185);
+
+ ctx.strokeStyle="#fff";
+ ctx.lineWidth=4;
+ ctx.strokeRect(30,207,340,181);
+
+ ctx.textAlign="center";
+ ctx.fillStyle="#bd3479";
+ ctx.font="bold 28px Arial";
+ ctx.fillText("🎀 EVITA RIDES 🎀",200,260);
+
+ ctx.font="bold 17px Arial";
+ ctx.fillText("Siap naik CB Pink?",200,310);
+
+ ctx.font="bold 17px Arial";
+ ctx.fillText("Ayo sampai FINISH! 💗",200,350);
+
+ ctx.textAlign="left";
+}
+
+function startGame(){
+ if(animationId!==null){
+  cancelAnimationFrame(animationId);
+  animationId=null;
+ }
+
+ closeOverlays();
+
+ score=0;
+ progress=0;
+ playerX=200;
+ obstacles=[];
+ frame=0;
+ roadOffset=0;
+ left=false;
+ right=false;
+
+ playing=true;
+
+ startBtn.style.display="none";
+ restartBtn.style.display="none";
+
+ updateStats();
+ loop();
+}
+
+// ---------------- KONTROL ----------------
+
+function holdButton(id,side){
+ const btn=document.getElementById(id);
+
+ btn.addEventListener("pointerdown",e=>{
+  e.preventDefault();
+
+  if(side==="left")left=true;
+  else right=true;
+
+  btn.setPointerCapture(e.pointerId);
+ });
+
+ function release(){
+  if(side==="left")left=false;
+  else right=false;
+ }
+
+ ["pointerup","pointercancel","lostpointercapture"].forEach(event=>{
+  btn.addEventListener(event,release);
+ });
+}
+
+holdButton("left","left");
+holdButton("right","right");
+
+window.addEventListener("pointerup",()=>{
+ left=false;
+ right=false;
+});
+
+window.addEventListener("blur",()=>{
+ left=false;
+ right=false;
+});
+
+document.addEventListener("keydown",e=>{
+ if(e.key==="ArrowLeft"||e.key.toLowerCase()==="a"){
+  e.preventDefault();
+  left=true;
+ }
+ if(e.key==="ArrowRight"||e.key.toLowerCase()==="d"){
+  e.preventDefault();
+  right=true;
+ }
+});
+
+document.addEventListener("keyup",e=>{
+ if(e.key==="ArrowLeft"||e.key.toLowerCase()==="a")left=false;
+ if(e.key==="ArrowRight"||e.key.toLowerCase()==="d")right=false;
+});
+
+startBtn.onclick=startGame;
+restartBtn.onclick=startGame;
+document.getElementById("tryAgain").onclick=startGame;
+document.getElementById("finishAgain").onclick=startGame;
+
+// Tampilan awal
+updateStats();
+drawIdle();
+</script>
+</body>
+</html>
