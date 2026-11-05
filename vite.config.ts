@@ -4,8 +4,9 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
-  return {
-    plugins: [react(), tailwindcss()],
+return {
+  base: '/evita/',
+  plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve('.'),
